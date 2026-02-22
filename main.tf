@@ -2,18 +2,22 @@ provider "aws" {
   region = "us-east-2"
 }
 
+variable "server_port" {
+  type        = number 
+  default     = 8080
+  description = "The prot the server will use for HTTP requests"
+}
+
+
 resource "aws_instance" "example" {
-  ami                    = "ami-09256c524fab91d36"
+  ami                    = "ami-0fb653ca2d3203ac1"
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.instance.id]
 
-  user_data = <<EOF
+  user_data = <<-EOF
 #!/bin/bash
-yum update -y
-yum install -y httpd
-systemctl enable httpd
-systemctl start httpd
-echo "Hello, world" > /var/www/html/index.html
+echo "Hello, world" > index.html
+nohup busybox httpd -f -p ${var.server_port} &
 EOF
 
   user_data_replace_on_change = true
@@ -27,8 +31,8 @@ resource "aws_security_group" "instance" {
   name = "terraform-example-instance"
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = var.server_port 
+    to_port     = var.server_port 
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -39,4 +43,9 @@ resource "aws_security_group" "instance" {
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+output "public_ip" {
+  value       = aws_instance.example.public_ip
+  description = "The public ip address of the web server"
 }
